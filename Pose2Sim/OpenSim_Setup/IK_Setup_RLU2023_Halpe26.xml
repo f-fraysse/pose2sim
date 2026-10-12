@@ -20,13 +20,13 @@
 			<objects>
 				<IKMarkerTask name="Nose">
 					<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
-					<apply>true</apply>
+					<apply>false</apply>
 					<!--Weight given to the task when solving inverse kinematics problems, default is 0.-->
 					<weight>0.10000000000000001</weight>
 				</IKMarkerTask>
 				<IKMarkerTask name="Head">
 					<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
-					<apply>true</apply>
+					<apply>false</apply>
 					<!--Weight given to the task when solving inverse kinematics problems, default is 0.-->
 					<weight>0.10000000000000001</weight>
 				</IKMarkerTask>
