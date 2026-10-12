@@ -64,6 +64,14 @@ __email__ = "contact@david-pagnon.com"
 __status__ = "Development"
 
 
+## CONSTANTS
+# Go2Kin fork: Rajagopal-Lai-Uhlrich 2023 model and its Halpe26 setup files (in OpenSim_Setup)
+RLU2023_MODEL = 'RajagopalLaiUhlrich2023.osim'
+RLU2023_MARKERS = 'Markers_Halpe26_RLU2023_P2Sall.xml'
+RLU2023_SCALING_SETUP = 'Scaling_Setup_RLU2023_Halpe26.xml'
+RLU2023_IK_SETUP = 'IK_Setup_RLU2023_Halpe26.xml'
+
+
 ## FUNCTIONS
 def get_opensim_setup_dir():
     '''
@@ -81,19 +89,22 @@ def get_opensim_setup_dir():
     return setup_dir
 
 
-def get_model_path(use_simple_model, osim_setup_dir):
+def get_model_path(use_simple_model, osim_setup_dir, use_RLU2023=False):
     '''
     Retrieve the path of the OpenSim model file.
 
     INPUTS:
     - pose_model (str): Name of the model
     - osim_setup_dir (Path): Path to the OpenSim setup directory.
+    - use_RLU2023 (bool): Use the Rajagopal-Lai-Uhlrich 2023 model (overrides use_simple_model).
 
     OUTPUTS:
     - pose_model_path: (Path) Path to the OpenSim model file.
     '''
 
-    if use_simple_model:
+    if use_RLU2023:
+        pose_model_file = RLU2023_MODEL
+    elif use_simple_model:
         pose_model_file = 'Model_Pose2Sim_simple.osim'
     else:
         pose_model_file = 'Model_Pose2Sim_muscles_flex.osim'
@@ -103,17 +114,21 @@ def get_model_path(use_simple_model, osim_setup_dir):
     return unscaled_model_path
 
 
-def get_markers_path(pose_model, osim_setup_dir):
+def get_markers_path(pose_model, osim_setup_dir, use_RLU2023=False):
     '''
     Retrieve the path of the marker file.
 
     INPUTS:
     - pose_model (str): Name of the model
     - osim_setup_dir (Path): Path to the OpenSim setup directory.
+    - use_RLU2023 (bool): Use the Rajagopal-Lai-Uhlrich 2023 marker set.
 
     OUTPUTS:
     - markers_path: (Path) Path to the marker file.
     '''
+
+    if use_RLU2023:
+        return osim_setup_dir / RLU2023_MARKERS
 
     pose_model = ''.join(pose_model.split('_')).lower()
     if pose_model == 'halpe68' or pose_model == 'halpe136':
@@ -134,17 +149,21 @@ def get_markers_path(pose_model, osim_setup_dir):
     return markers_path
 
 
-def get_scaling_setup(pose_model, osim_setup_dir):
+def get_scaling_setup(pose_model, osim_setup_dir, use_RLU2023=False):
     '''
     Retrieve the path of the OpenSim scaling setup file.
 
     INPUTS:
     - pose_model (str): Name of the model
     - osim_setup_dir (Path): Path to the OpenSim setup directory.
+    - use_RLU2023 (bool): Use the Rajagopal-Lai-Uhlrich 2023 scaling setup.
 
     OUTPUTS:
     - scaling_setup_path: (Path) Path to the OpenSim scaling setup file.
     '''
+
+    if use_RLU2023:
+        return osim_setup_dir / RLU2023_SCALING_SETUP
 
     pose_model = ''.join(pose_model.split('_')).lower()
     if pose_model == 'halpe68' or pose_model == 'halpe136':
@@ -165,18 +184,22 @@ def get_scaling_setup(pose_model, osim_setup_dir):
     return scaling_setup_path
 
 
-def get_IK_Setup(pose_model, osim_setup_dir):
+def get_IK_Setup(pose_model, osim_setup_dir, use_RLU2023=False):
     '''
     Retrieve the path of the OpenSim inverse kinematics setup file.
 
     INPUTS:
     - pose_model (str): Name of the model
     - osim_setup_dir (Path): Path to the OpenSim setup directory.
+    - use_RLU2023 (bool): Use the Rajagopal-Lai-Uhlrich 2023 IK setup.
 
     OUTPUTS:
     - ik_setup_path: (Path) Path to the OpenSim IK setup file.
     '''
-    
+
+    if use_RLU2023:
+        return osim_setup_dir / RLU2023_IK_SETUP
+
     pose_model = ''.join(pose_model.split('_')).lower()
     if pose_model == 'halpe68' or pose_model == 'halpe136':
         ik_setup_file = 'IK_Setup_Pose2Sim_Halpe68_136.xml'.lower()
@@ -383,7 +406,7 @@ def update_scale_values(scaling_root, segment_ratio_dict):
 
 def perform_scaling(trc_file, pose_model, kinematics_dir, osim_setup_dir, 
                     use_simple_model=False, right_left_symmetry=True, subject_height=1.75, subject_mass=70, 
-                    remove_scaling_setup=True, large_hip_knee_angles=135, trimmed_extrema_percent=0.5):
+                    remove_scaling_setup=True, large_hip_knee_angles=135, trimmed_extrema_percent=0.5, use_RLU2023=False):
     '''
     Perform model scaling based on the (not necessarily static) TRC file:
     - Remove 10% fastest frames (potential outliers)
@@ -403,7 +426,8 @@ def perform_scaling(trc_file, pose_model, kinematics_dir, osim_setup_dir,
     - remove_scaling_setup (bool): Whether to remove the scaling setup file after scaling.
     - large_hip_knee_angles (float): Imprecise coordinates when person is crouching
     - trimmed_extrema_percent (float): Proportion of the most extreme segment values to remove before calculating their mean
-    
+    - use_RLU2023 (bool): Whether to use the Rajagopal-Lai-Uhlrich 2023 model and setup files.
+
     OUTPUTS:
     - A scaled OpenSim model file.
     '''
@@ -411,12 +435,12 @@ def perform_scaling(trc_file, pose_model, kinematics_dir, osim_setup_dir,
     try:
         # Load model
         opensim.ModelVisualizer.addDirToGeometrySearchPaths(str(osim_setup_dir / 'Geometry'))
-        unscaled_model_path = get_model_path(use_simple_model, osim_setup_dir)
+        unscaled_model_path = get_model_path(use_simple_model, osim_setup_dir, use_RLU2023=use_RLU2023)
         if not unscaled_model_path:
             raise ValueError(f"Unscaled OpenSim model not found at: {unscaled_model_path}")
         unscaled_model = opensim.Model(str(unscaled_model_path))
         # Add markers to model
-        markers_path = get_markers_path(pose_model, osim_setup_dir)
+        markers_path = get_markers_path(pose_model, osim_setup_dir, use_RLU2023=use_RLU2023)
         markerset = opensim.MarkerSet(str(markers_path))
         unscaled_model.set_MarkerSet(markerset)
         # Initialize and save model with markers
@@ -425,7 +449,7 @@ def perform_scaling(trc_file, pose_model, kinematics_dir, osim_setup_dir,
         unscaled_model.printToXML(scaled_model_path)
 
         # Load scaling setup
-        scaling_path = get_scaling_setup(pose_model, osim_setup_dir)
+        scaling_path = get_scaling_setup(pose_model, osim_setup_dir, use_RLU2023=use_RLU2023)
         scaling_tree = etree.parse(scaling_path)
         scaling_root = scaling_tree.getroot()
         scaling_path_temp = str(kinematics_dir / (trc_file.stem + '_scaling_setup.xml'))
@@ -447,6 +471,9 @@ def perform_scaling(trc_file, pose_model, kinematics_dir, osim_setup_dir,
         scaling_root[0].find('mass').text = str(subject_mass)
         scaling_root[0].find('height').text = str(subject_height)
         scaling_root[0].find('GenericModelMaker').find('model_file').text = scaled_model_path
+        # Markers are already in the saved model; a relative marker_set_file (e.g. in the RLU2023 setup) would not resolve from kinematics_dir
+        marker_set_file = scaling_root[0].find('GenericModelMaker').find('marker_set_file')
+        if marker_set_file is not None: marker_set_file.text = 'Unassigned'
         scaling_root[0].find(".//scaling_order").text = ' manualScale measurements'
         deactivate_measurements(scaling_root)
         update_scale_values(scaling_root, segment_ratio_dict)
@@ -468,7 +495,7 @@ def perform_scaling(trc_file, pose_model, kinematics_dir, osim_setup_dir,
         raise
 
 
-def perform_IK(trc_file, kinematics_dir, osim_setup_dir, pose_model, remove_IK_setup=True):
+def perform_IK(trc_file, kinematics_dir, osim_setup_dir, pose_model, remove_IK_setup=True, use_RLU2023=False):
     '''
     Perform inverse kinematics based on a TRC file and a scaled OpenSim model:
     - Model markers follow the triangulated markers while respecting the model kinematic constraints
@@ -480,6 +507,7 @@ def perform_IK(trc_file, kinematics_dir, osim_setup_dir, pose_model, remove_IK_s
     - osim_setup_dir (Path): The directory where the OpenSim setup and model files are stored.
     - pose_model (str): The name of the model.
     - remove_IK_setup (bool): Whether to remove the IK setup file after running IK.
+    - use_RLU2023 (bool): Whether to use the Rajagopal-Lai-Uhlrich 2023 IK setup file.
 
     OUTPUTS:
     - A joint angle data file (.mot).
@@ -487,7 +515,7 @@ def perform_IK(trc_file, kinematics_dir, osim_setup_dir, pose_model, remove_IK_s
 
     try:
         # Retrieve data
-        ik_path = get_IK_Setup(pose_model, osim_setup_dir)
+        ik_path = get_IK_Setup(pose_model, osim_setup_dir, use_RLU2023=use_RLU2023)
         ik_path_temp =  str(kinematics_dir / (trc_file.stem + '_ik_setup.xml'))
         scaled_model_path = (kinematics_dir / (trc_file.stem + '.osim')).resolve()
         output_motion_file = Path(kinematics_dir, trc_file.stem + '.mot').resolve()
@@ -524,7 +552,7 @@ def perform_IK_worker(args):
     Each process gets its own OpenSim instance.
     '''
    
-    trc_file, pose_model, kinematics_dir, osim_setup_dir, remove_IK_setup, session_dir = args
+    trc_file, pose_model, kinematics_dir, osim_setup_dir, remove_IK_setup, session_dir, use_RLU2023 = args
     opensim_logs_file = kinematics_dir / 'opensim_logs.txt'
 
     # Reimport and reset settings in each worker process
@@ -538,7 +566,7 @@ def perform_IK_worker(args):
     opensim.ModelVisualizer.addDirToGeometrySearchPaths(str(osim_setup_dir / 'Geometry'))
 
     logging.info(f"Running inverse kinematics on {trc_file.resolve()}")
-    perform_IK(trc_file, kinematics_dir, osim_setup_dir, pose_model, remove_IK_setup=remove_IK_setup)
+    perform_IK(trc_file, kinematics_dir, osim_setup_dir, pose_model, remove_IK_setup=remove_IK_setup, use_RLU2023=use_RLU2023)
     logging.info(f"\tDone. Joint angle data saved to {str((kinematics_dir / (trc_file.stem + '.mot')).resolve())}\n")
 
 
@@ -577,6 +605,7 @@ def kinematics_all(config_dict):
 
     use_augmentation = config_dict.get('kinematics', {}).get('use_augmentation', True)
     use_simple_model = config_dict.get('kinematics', {}).get('use_simple_model', False)
+    use_RLU2023 = config_dict.get('kinematics', {}).get('use_original_RLU2023', False)
     filter_ik = config_dict.get('kinematics', {}).get('filter_ik', True)
     multi_person = config_dict.get('project', {}).get('multi_person', False)
     parallel_workers = config_dict.get('kinematics', {}).get('parallel_workers_kinematics', 'auto')
@@ -632,6 +661,12 @@ def kinematics_all(config_dict):
         # else:
         #     raise NameError('{pose_model} not found in skeletons.py nor in Config.toml')
 
+    if use_RLU2023:
+        if pose_model != 'HALPE_26':
+            raise ValueError(f"use_original_RLU2023 requires pose_model = 'Body_with_feet' (HALPE_26) and use_augmentation = false, "
+                             f"but pose model resolved to '{pose_model}'.")
+        logging.info(f"Using RajagopalLaiUhlrich2023 model ({RLU2023_MODEL}) with {RLU2023_MARKERS}, {RLU2023_SCALING_SETUP}, {RLU2023_IK_SETUP}.")
+
     # Calculate subject heights
     if subject_height is None or subject_height == 0:
         subject_height = [1.75] * len(trc_files)
@@ -679,7 +714,8 @@ def kinematics_all(config_dict):
         logging.info(f"Subject mass: {round(subject_mass[p],2)} kg")
         logging.info(f"\nScaling TRC file: {trc_file.resolve()}...")
         perform_scaling(trc_file, pose_model, kinematics_dir, osim_setup_dir, use_simple_model, right_left_symmetry=right_left_symmetry, subject_height=subject_height[p], subject_mass=subject_mass[p], 
-                        remove_scaling_setup=remove_scaling_setup, large_hip_knee_angles=large_hip_knee_angles, trimmed_extrema_percent=trimmed_extrema_percent)
+                        remove_scaling_setup=remove_scaling_setup, large_hip_knee_angles=large_hip_knee_angles, trimmed_extrema_percent=trimmed_extrema_percent,
+                        use_RLU2023=use_RLU2023)
         logging.info(f"\tDone. Scaled model saved to {(kinematics_dir / (trc_file.stem + '_scaled.osim')).resolve()}")
 
     # Inverse Kinematics
@@ -692,7 +728,7 @@ def kinematics_all(config_dict):
         from concurrent.futures import ProcessPoolExecutor
         with ProcessPoolExecutor(max_workers=n_workers) as executor:
             try:
-                ik_args = [(f, pose_model, kinematics_dir, osim_setup_dir, remove_IK_setup, session_dir) for f in trc_files]
+                ik_args = [(f, pose_model, kinematics_dir, osim_setup_dir, remove_IK_setup, session_dir, use_RLU2023) for f in trc_files]
                 list(executor.map(perform_IK_worker, ik_args))
             except KeyboardInterrupt:
                 raise
@@ -700,7 +736,7 @@ def kinematics_all(config_dict):
     else:
         for trc_file in trc_files:
             logging.info(f"Running inverse kinematics on {trc_file.resolve()}")
-            perform_IK(trc_file, kinematics_dir, osim_setup_dir, pose_model, remove_IK_setup=remove_IK_setup)
+            perform_IK(trc_file, kinematics_dir, osim_setup_dir, pose_model, remove_IK_setup=remove_IK_setup, use_RLU2023=use_RLU2023)
             logging.info(f"\tDone. Joint angle data saved to {str((kinematics_dir / (trc_file.stem + '.mot')).resolve())}\n")
 
     logging.info(f"OpenSim logs saved to {opensim_logs_file.resolve()}.")
