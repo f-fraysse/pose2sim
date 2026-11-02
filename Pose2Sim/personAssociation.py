@@ -721,9 +721,11 @@ def associate_all(config_dict):
     json_dirs_names = [k for k in pose_listdirs_names if 'json' in k]
     try: 
         json_files_names = [fnmatch.filter(os.listdir(os.path.join(poseSync_dir, js_dir)), '*.json') for js_dir in json_dirs_names]
+        json_src_dir = poseSync_dir # fork fix: read files from the folder they were listed from
     except:
         try:
             json_files_names = [fnmatch.filter(os.listdir(os.path.join(pose_dir, js_dir)), '*.json') for js_dir in json_dirs_names]
+            json_src_dir = pose_dir
         except:
             raise ValueError(f'No json files found in {pose_dir} nor {poseSync_dir} subdirectories. Make sure you run Pose2Sim.poseEstimation() first.')
     json_files_names = [sort_stringlist_by_last_number(j) for j in json_files_names]
@@ -760,11 +762,9 @@ def associate_all(config_dict):
         # print(f'\nFrame {f}:')
         json_files_names_f = [[j for j in json_files_names[c] if int(re.split(r'(\d+)',j)[-2])==f] for c in range(n_cams)]
         json_files_names_f = [j for j_list in json_files_names_f for j in (j_list or ['none'])]
-        try:
-            json_files_f = [os.path.join(poseSync_dir, json_dirs_names[c], json_files_names_f[c]) for c in range(n_cams)]
-            with open(os.path.exist(json_files_f[0])) as json_exist_test: pass
-        except:
-            json_files_f = [os.path.join(pose_dir, json_dirs_names[c], json_files_names_f[c]) for c in range(n_cams)]
+        # fork fix: upstream tested `open(os.path.exist(...))` (typo, always raised) and fell
+        # back to pose_dir with pose-sync's shifted names, silently undoing the sync.
+        json_files_f = [os.path.join(json_src_dir, json_dirs_names[c], json_files_names_f[c]) for c in range(n_cams)]
         json_tracked_files_f = [os.path.join(poseTracked_dir, json_dirs_names[c], json_files_names_f[c]) for c in range(n_cams)]
 
         if not multi_person:
