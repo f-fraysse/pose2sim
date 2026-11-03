@@ -1203,9 +1203,14 @@ def sort_people_sports2d(keyptpre, keypt, scores=None, max_dist=None, max_unseen
             ret = (np.array([]), keypt, np.arange(n_curr))
         return ret + (new_fsls,) if use_staleness else ret
     
-    # Initialize frames_since_last_seen if staleness tracking is enabled but not yet started
-    if use_staleness and frames_since_last_seen is None:
-        frames_since_last_seen = np.zeros(n_prev, dtype=int)
+    # Initialize / pad frames_since_last_seen: the caller may have added person slots to
+    # keyptpre (e.g. someone entering the view) without extending the counter
+    if use_staleness:
+        if frames_since_last_seen is None:
+            frames_since_last_seen = np.zeros(n_prev, dtype=int)
+        elif len(frames_since_last_seen) < n_prev:
+            frames_since_last_seen = np.concatenate(
+                [frames_since_last_seen, np.zeros(n_prev - len(frames_since_last_seen), dtype=int)])
 
     # Broadcasts the computation of distance matrix for all possible associations instead of using euclidean_distance in a loop
     keyptpre_expanded = keyptpre[:, np.newaxis, :, :]
